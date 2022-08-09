@@ -10,9 +10,9 @@ import json
 def create_embed(toptext, bodytext):
     embed = discord.Embed(title=toptext, description=bodytext, color=0x0000ff)
     embed.set_author(
-        name="RamdiskBot",
+        name="YourBotName",
         icon_url=
-        "https://cdn.discordapp.com/attachments/949660529109123152/1005324036336799744/images.jpeg"
+        "IconURL"
     )
     return embed
 
