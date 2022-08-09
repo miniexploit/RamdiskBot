@@ -42,7 +42,7 @@ async def patch(ctx, identifier, version):
 
 	embed = create_embed("Patching ramdisk in progress", "Please be patient")
 	await ctx.respond(embed=embed)
-	channel = client.get_channel(1005348893413867601)
+	channel = client.get_channel(debugchannelid)
 	dbginfo = f"Requested by {ctx.author.mention}\n```\n{identifier}, iOS {version} ramdisk patch progress (DEBUG LOG)\n```"
 	dbgmsg = await channel.send(dbginfo)
 	async def debug(msg):
