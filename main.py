@@ -27,7 +27,7 @@ async def hi(ctx):
 	await ctx.respond("Hey!")
 
 @client.slash_command(name="patch", description="Patch ramdisk for tethered downgrading")
-async def patch(ctx, identifier, version):
+async def patch(ctx, identifier, version, buildid=None):
 	try:
 		ipsw_api = requests.get(f'https://api.ipsw.me/v4/device/{identifier}?type=ipsw').json()
 	except:
@@ -42,7 +42,7 @@ async def patch(ctx, identifier, version):
 
 	embed = create_embed("Patching ramdisk in progress", "Please be patient")
 	await ctx.respond(embed=embed)
-	channel = client.get_channel(debugchannelid)
+	channel = client.get_channel(1005348893413867601)
 	dbginfo = f"Requested by {ctx.author.mention}\n```\n{identifier}, iOS {version} ramdisk patch progress (DEBUG LOG)\n```"
 	dbgmsg = await channel.send(dbginfo)
 	async def debug(msg):
@@ -54,11 +54,7 @@ async def patch(ctx, identifier, version):
 		dbginfo = "\n".join(arr)
 		await dbgmsg.edit(dbginfo)
 
-	maker = patcher.ramdiskMaker(identifier, version, callback=debug)
-	if (url := maker.isOutExists()):
-		embed = create_embed(f"Hey! {ctx.author.mention}", f"The ramdisk of the iOS version you're requesting has already been uploaded!\n{url}")
-		await ctx.send(embed=embed)
-		return
+	maker = patcher.ramdiskMaker(identifier, version, buildid=buildid, callback=debug)
 	url_ret = maker.getFirmwareUrl()
 	if url_ret[1]: # url_ret is json
 		async def button_callback(interaction):
@@ -69,7 +65,7 @@ async def patch(ctx, identifier, version):
 				button.disabled = True
 			#await interaction.
 			await msg.edit(embed=create_embed("Multiple BuildIDs", "BuildID selected by user"), view=view)
-			maker.setFirmwareUrl(url_ret[0][interaction.custom_id])
+			maker.setFirmwareUrl(url_ret[0][interaction.custom_id], buildid)
 			await debug("Firmware URL set!")
 		buttons = []
 		view = View()
@@ -81,10 +77,15 @@ async def patch(ctx, identifier, version):
 		msg = await ctx.send(embed=create_embed("Multiple BuildIDs", "There're multiple BuildIDs for this iOS version, please select one from below"), view=view)
 		await client.wait_for("interaction")
 	else:
-		maker.setFirmwareUrl(url_ret[0])
+		maker.setFirmwareUrl(url_ret[0], buildid)
 	await asyncio.sleep(5)
+	plist = maker.loadManifest()
+	if (url := maker.isOutExists()):
+		embed = create_embed(f"Hey! {ctx.author.mention}", f"The ramdisk of the iOS version you're requesting has already been uploaded!\n{url}")
+		await ctx.send(embed=embed)
+		return
 	# extract
-	ramdiskPath = maker.extractRamdisk()
+	ramdiskPath = maker.extractRamdisk(plist)
 	# patch
 	outPath = maker.patchRamdisk(ramdiskPath)
 	url = maker.uploadRamdisk(outPath)
@@ -97,7 +98,7 @@ if not DEBUG:
 	@patch.error
 	async def patch_error(ctx, error):
 		print("patch_error() running")
-		embed = create_embed(f"Error during patching ramdisk",f"An exception was raised during the patching process:\n`{error.__cause__}`")
+		embed = create_embed(f"Error during patching ramdisk",f"An exception was raised during the patching process:\n```{error.__cause__}```")
 		await ctx.send(ctx.author.mention, embed=embed)
 
 client.run(os.environ["BOT_TOKEN"])
